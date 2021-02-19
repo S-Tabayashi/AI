@@ -148,7 +148,7 @@ class ScoringService(object):
         return train_X, train_y, val_X, val_y, test_X, test_y
 
     @classmethod
-    def calculate_glossary_of_financial_analysis(row):
+    def calculate_glossary_of_financial_analysis(cls, row):
         # 売上高営業利益率 売上高営業利益率（％）＝営業利益÷売上高×100
         operating_profit_margin = \
             row['Result_FinancialStatement OperatingIncome'] / \
