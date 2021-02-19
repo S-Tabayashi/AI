@@ -148,6 +148,55 @@ class ScoringService(object):
         return train_X, train_y, val_X, val_y, test_X, test_y
 
     @classmethod
+    def calculate_glossary_of_financial_analysis(row):
+        # 売上高営業利益率 売上高営業利益率（％）＝営業利益÷売上高×100
+        operating_profit_margin = \
+            row['Result_FinancialStatement OperatingIncome'] / \
+            row['Result_FinancialStatement NetSales'] * 100
+        # 売上高経常利益率　売上高経常利益率（％）＝経常利益÷売上高×100
+        ordinary_profit_margin = \
+            row['Result_FinancialStatement OrdinaryIncome'] / \
+            row['Result_FinancialStatement NetSales'] * 100
+        # 売上高純履歴率　売上高純利益率（％）＝当期純利益÷売上高×100
+        net_profit_margin = row['Result_FinancialStatement NetIncome'] / \
+                            row['Result_FinancialStatement NetSales'] * 100
+        # 総資本回転率 総資本回転率（％）＝売上高÷総資本（自己資本＋他人資本）×100
+        total_asset_turnover = row['Result_FinancialStatement NetSales'] / \
+                               row['Result_FinancialStatement NetAssets'] * 100
+        # 売上高増加率
+        net_sales_growth_rate = \
+            (row['Result_FinancialStatement NetSales'] -
+             row['Previous_FinancialStatement NetSales']) / \
+            row['Previous_FinancialStatement NetSales'] * 100
+        # 経常利益増加率
+        ordinary_income_growth_rate = \
+            (row['Result_FinancialStatement OrdinaryIncome'] -
+             row['Previous_FinancialStatement OrdinaryIncome']) / \
+            row['Previous_FinancialStatement OrdinaryIncome'] * 100
+        # 営業利益増加率
+        operationg_income_growth_rate = \
+            (row['Result_FinancialStatement OperatingIncome'] -
+             row['Previous_FinancialStatement OperatingIncome']) / \
+            row['Previous_FinancialStatement OperatingIncome'] * 100
+        # 総資本増加率
+        total_assets_growth_rate = \
+            (row['Result_FinancialStatement TotalAssets'] -
+             row['Previous_FinancialStatement TotalAssets']) / \
+            row['Previous_FinancialStatement TotalAssets'] * 100
+        # 純資本増加率
+        net_assets_growth_rate = \
+            (row['Result_FinancialStatement NetAssets'] -
+             row['Previous_FinancialStatement NetAssets']) / \
+            row['Previous_FinancialStatement NetAssets'] * 100
+
+        return pd.Series(
+            [operating_profit_margin, ordinary_profit_margin,
+             net_profit_margin, total_asset_turnover,
+             net_sales_growth_rate, ordinary_income_growth_rate,
+             operationg_income_growth_rate, total_assets_growth_rate,
+             net_assets_growth_rate])
+
+    @classmethod
     def get_features_for_predict(cls, dfs, code, start_dt="2016-01-01"):
         """
         Args:
@@ -167,6 +216,50 @@ class ScoringService(object):
         fin_data.set_index("datetime", inplace=True)
         # fin_dataのnp.float64のデータのみを取得
         fin_data = fin_data.select_dtypes(include=["float64"])
+
+        # 特徴量追加
+        fin_data = fin_data.join(fin_data
+        [['Result_FinancialStatement NetSales',
+          'Result_FinancialStatement OperatingIncome',
+          'Result_FinancialStatement OrdinaryIncome',
+          'Result_FinancialStatement NetIncome',
+          'Result_FinancialStatement TotalAssets',
+          'Result_FinancialStatement NetAssets',
+          'Result_FinancialStatement CashFlowsFromOperatingActivities',
+          'Result_FinancialStatement CashFlowsFromFinancingActivities',
+          'Result_FinancialStatement CashFlowsFromInvestingActivities']].rename(
+            columns=
+            {
+                'Result_FinancialStatement NetSales':
+                    'Previous_FinancialStatement NetSales',
+                'Result_FinancialStatement OperatingIncome':
+                    'Previous_FinancialStatement OperatingIncome',
+                'Result_FinancialStatement OrdinaryIncome':
+                    'Previous_FinancialStatement OrdinaryIncome',
+                'Result_FinancialStatement NetIncome':
+                    'Previous_FinancialStatement NetIncome',
+                'Result_FinancialStatement TotalAssets':
+                    'Previous_FinancialStatement TotalAssets',
+                'Result_FinancialStatement NetAssets':
+                    'Previous_FinancialStatement NetAssets',
+                'Result_FinancialStatement CashFlowsFromOperatingActivities':
+                    'Previous_FinancialStatement '
+                    'CashFlowsFromOperatingActivities',
+                'Result_FinancialStatement CashFlowsFromFinancingActivities':
+                    'Previous_FinancialStatement '
+                    'CashFlowsFromFinancingActivities',
+                'Result_FinancialStatement CashFlowsFromInvestingActivities':
+                    'Previous_FinancialStatement '
+                    'CashFlowsFromInvestingActivities'}).shift(
+            -1))
+        fin_data[['operating_profit_margin', 'ordinary_profit_margin',
+                  'net_profit_margin', 'total_asset_turnover',
+                  'net_sales_growth_rate', 'ordinary_income_growth_rate',
+                  'operationg_income_growth_rate',
+                  'total_assets_growth_rate',
+                  'net_assets_growth_rate']] = fin_data.apply(
+            cls.calculate_glossary_of_financial_analysis, axis=1)
+
         # 欠損値処理
         fin_feats = fin_data.fillna(0)
 
@@ -174,14 +267,15 @@ class ScoringService(object):
         # 予測対象日からバッファ含めて土日を除く過去90日遡った時点から特徴量を生成します
         n = 90
         # 特徴量の生成対象期間を指定
-        fin_feats = fin_feats.loc[pd.Timestamp(start_dt) - pd.offsets.BDay(n) :]
+        fin_feats = fin_feats.loc[pd.Timestamp(start_dt) - pd.offsets.BDay(n):]
 
         # stock_priceデータを読み込む
         price = dfs["stock_price"].copy()
         # 特定の銘柄コードのデータに絞る
         price_data = price[price["Local Code"] == code].copy()
         # 日付列をpd.Timestamp型に変換してindexに設定
-        price_data["datetime"] = pd.to_datetime(price_data["EndOfDayQuote Date"])
+        price_data["datetime"] = \
+            pd.to_datetime(price_data["EndOfDayQuote Date"])
         price_data.set_index("datetime", inplace=True)
         # 終値のみに絞る
         feats = price_data[["EndOfDayQuote ExchangeOfficialClose"]].copy()
@@ -222,17 +316,42 @@ class ScoringService(object):
             .std()
         )
         # 終値と20営業日の単純移動平均線の乖離
-        feats["MA_gap_1month"] = feats["EndOfDayQuote ExchangeOfficialClose"] / (
-            feats["EndOfDayQuote ExchangeOfficialClose"].rolling(20).mean()
-        )
+        feats["MA_gap_1month"] = feats["EndOfDayQuote ExchangeOfficialClose"] \
+                                 / (feats["EndOfDayQuote ExchangeOfficialClose"]
+                                    .rolling(20).mean())
         # 終値と40営業日の単純移動平均線の乖離
-        feats["MA_gap_2month"] = feats["EndOfDayQuote ExchangeOfficialClose"] / (
-            feats["EndOfDayQuote ExchangeOfficialClose"].rolling(40).mean()
-        )
+        feats["MA_gap_2month"] = feats["EndOfDayQuote ExchangeOfficialClose"] \
+                                 / (feats["EndOfDayQuote ExchangeOfficialClose"]
+                                    .rolling(40).mean())
         # 終値と60営業日の単純移動平均線の乖離
-        feats["MA_gap_3month"] = feats["EndOfDayQuote ExchangeOfficialClose"] / (
-            feats["EndOfDayQuote ExchangeOfficialClose"].rolling(60).mean()
-        )
+        feats["MA_gap_3month"] = feats["EndOfDayQuote ExchangeOfficialClose"] \
+                                 / (feats["EndOfDayQuote ExchangeOfficialClose"]
+                                    .rolling(60).mean())
+
+        # 特徴量追加
+        # EWMA
+        ALPHA = 0.25
+        feats['EWMA'] = feats['EndOfDayQuote ExchangeOfficialClose']
+
+        for t in zip(feats.index, feats.index[1:]):
+            feats.loc[t[1], 'EWMA'] = ALPHA * feats.loc[
+                t[1], 'EndOfDayQuote ExchangeOfficialClose'] + (1 - ALPHA) * \
+                                      feats.loc[t[0], 'EWMA']
+
+        # EMA 10日
+        feats["ema_10"] = feats["EndOfDayQuote ExchangeOfficialClose"].ewm(
+            span=10).mean()
+
+        # MACD
+        # EMA12
+        feats["ema_12"] = feats["EndOfDayQuote ExchangeOfficialClose"].ewm(
+            span=12).mean()
+        # EMA 26
+        feats["ema_26"] = feats["EndOfDayQuote ExchangeOfficialClose"].ewm(
+            span=26).mean()
+        feats["macd"] = feats["ema_12"] - feats["ema_26"]
+        feats["signal"] = feats["macd"].ewm(span=9).mean()
+
         # 欠損値処理
         feats = feats.fillna(0)
         # 元データのカラムを削除
