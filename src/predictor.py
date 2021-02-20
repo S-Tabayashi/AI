@@ -149,45 +149,65 @@ class ScoringService(object):
 
     @classmethod
     def calculate_glossary_of_financial_analysis(cls, row):
+        operating_profit_margin = 0
+        ordinary_profit_margin = 0
+        net_profit_margin = 0
+        total_asset_turnover = 0
+        net_sales_growth_rate = 0
+        ordinary_income_growth_rate = 0
+        operationg_income_growth_rate = 0
+        total_assets_growth_rate = 0
+        net_assets_growth_rate = 0
+
         # 売上高営業利益率 売上高営業利益率（％）＝営業利益÷売上高×100
-        operating_profit_margin = \
-            row['Result_FinancialStatement OperatingIncome'] / \
-            row['Result_FinancialStatement NetSales'] * 100
+        if row['Result_FinancialStatement NetSales'] != 0:
+            operating_profit_margin = \
+                row['Result_FinancialStatement OperatingIncome'] / \
+                row['Result_FinancialStatement NetSales'] * 100
         # 売上高経常利益率　売上高経常利益率（％）＝経常利益÷売上高×100
-        ordinary_profit_margin = \
-            row['Result_FinancialStatement OrdinaryIncome'] / \
-            row['Result_FinancialStatement NetSales'] * 100
+        if row['Result_FinancialStatement NetSales'] != 0:
+            ordinary_profit_margin = \
+                row['Result_FinancialStatement OrdinaryIncome'] / \
+                row['Result_FinancialStatement NetSales'] * 100
         # 売上高純履歴率　売上高純利益率（％）＝当期純利益÷売上高×100
-        net_profit_margin = row['Result_FinancialStatement NetIncome'] / \
-                            row['Result_FinancialStatement NetSales'] * 100
+        if row['Result_FinancialStatement NetSales'] != 0:
+            net_profit_margin = row['Result_FinancialStatement NetIncome'] / \
+                                row['Result_FinancialStatement NetSales'] * 100
         # 総資本回転率 総資本回転率（％）＝売上高÷総資本（自己資本＋他人資本）×100
-        total_asset_turnover = row['Result_FinancialStatement NetSales'] / \
-                               row['Result_FinancialStatement NetAssets'] * 100
+        if row['Result_FinancialStatement NetAssets'] != 0:
+            total_asset_turnover = row['Result_FinancialStatement NetSales'] / \
+                                row['Result_FinancialStatement NetAssets'] * 100
         # 売上高増加率
-        net_sales_growth_rate = \
-            (row['Result_FinancialStatement NetSales'] -
-             row['Previous_FinancialStatement NetSales']) / \
-            row['Previous_FinancialStatement NetSales'] * 100
+        if row['Previous_FinancialStatement NetSales'] != 0:
+            net_sales_growth_rate = \
+                (row['Result_FinancialStatement NetSales'] -
+                row['Previous_FinancialStatement NetSales']) / \
+                row['Previous_FinancialStatement NetSales'] * 100
         # 経常利益増加率
-        ordinary_income_growth_rate = \
-            (row['Result_FinancialStatement OrdinaryIncome'] -
-             row['Previous_FinancialStatement OrdinaryIncome']) / \
-            row['Previous_FinancialStatement OrdinaryIncome'] * 100
+        if row['Previous_FinancialStatement OrdinaryIncome'] != 0:
+            ordinary_income_growth_rate = \
+                (row['Result_FinancialStatement OrdinaryIncome'] -
+                row['Previous_FinancialStatement OrdinaryIncome']) / \
+                row['Previous_FinancialStatement OrdinaryIncome'] * 100
+
         # 営業利益増加率
-        operationg_income_growth_rate = \
-            (row['Result_FinancialStatement OperatingIncome'] -
-             row['Previous_FinancialStatement OperatingIncome']) / \
-            row['Previous_FinancialStatement OperatingIncome'] * 100
+        if row['Previous_FinancialStatement OperatingIncome'] != 0:
+            operationg_income_growth_rate = \
+                (row['Result_FinancialStatement OperatingIncome'] -
+                row['Previous_FinancialStatement OperatingIncome']) / \
+                row['Previous_FinancialStatement OperatingIncome'] * 100
         # 総資本増加率
-        total_assets_growth_rate = \
-            (row['Result_FinancialStatement TotalAssets'] -
-             row['Previous_FinancialStatement TotalAssets']) / \
-            row['Previous_FinancialStatement TotalAssets'] * 100
+        if row['Previous_FinancialStatement TotalAssets'] != 0:
+            total_assets_growth_rate = \
+                (row['Result_FinancialStatement TotalAssets'] -
+                row['Previous_FinancialStatement TotalAssets']) / \
+                row['Previous_FinancialStatement TotalAssets'] * 100
         # 純資本増加率
-        net_assets_growth_rate = \
-            (row['Result_FinancialStatement NetAssets'] -
-             row['Previous_FinancialStatement NetAssets']) / \
-            row['Previous_FinancialStatement NetAssets'] * 100
+        if row['Previous_FinancialStatement NetAssets'] != 0:
+            net_assets_growth_rate = \
+                (row['Result_FinancialStatement NetAssets'] -
+                row['Previous_FinancialStatement NetAssets']) / \
+                row['Previous_FinancialStatement NetAssets'] * 100
 
         return pd.Series(
             [operating_profit_margin, ordinary_profit_margin,
@@ -206,6 +226,7 @@ class ScoringService(object):
         Returns:
             feature DataFrame (pd.DataFrame)
         """
+        ALPHA = 0.25
         # stock_finデータを読み込み
         stock_fin = dfs["stock_fin"].copy()
 
@@ -250,8 +271,7 @@ class ScoringService(object):
                     'CashFlowsFromFinancingActivities',
                 'Result_FinancialStatement CashFlowsFromInvestingActivities':
                     'Previous_FinancialStatement '
-                    'CashFlowsFromInvestingActivities'}).shift(
-            -1))
+                    'CashFlowsFromInvestingActivities'}).shift(-1))
         fin_data[['operating_profit_margin', 'ordinary_profit_margin',
                   'net_profit_margin', 'total_asset_turnover',
                   'net_sales_growth_rate', 'ordinary_income_growth_rate',
@@ -330,7 +350,6 @@ class ScoringService(object):
 
         # 特徴量追加
         # EWMA
-        ALPHA = 0.25
         feats['EWMA'] = feats['EndOfDayQuote ExchangeOfficialClose']
 
         for t in zip(feats.index, feats.index[1:]):
