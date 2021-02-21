@@ -21,6 +21,40 @@ class ScoringService(object):
     # 目的変数
     TARGET_LABELS = ["label_high_20", "label_low_20"]
 
+    ALPHA = 0.25
+
+    COLUMNS = ['Result_FinancialStatement FiscalYear',
+               'Result_FinancialStatement NetSales',
+               'Result_FinancialStatement OperatingIncome',
+               'Result_FinancialStatement OrdinaryIncome',
+               'Result_FinancialStatement NetIncome',
+               'Result_FinancialStatement TotalAssets',
+               'Result_FinancialStatement NetAssets',
+               'Result_FinancialStatement CashFlowsFromOperatingActivities',
+               'Result_FinancialStatement CashFlowsFromFinancingActivities',
+               'Result_FinancialStatement CashFlowsFromInvestingActivities',
+               'Forecast_FinancialStatement FiscalYear',
+               'Forecast_FinancialStatement NetSales',
+               'Forecast_FinancialStatement OperatingIncome',
+               'Forecast_FinancialStatement OrdinaryIncome',
+               'Forecast_FinancialStatement NetIncome',
+               'Result_Dividend FiscalYear',
+               'Result_Dividend QuarterlyDividendPerShare',
+               'Result_Dividend AnnualDividendPerShare',
+               'Forecast_Dividend FiscalYear',
+               'Forecast_Dividend QuarterlyDividendPerShare',
+               'Forecast_Dividend AnnualDividendPerShare',
+               'IssuedShareEquityQuote IssuedShare', 'Section/Products',
+               '33 Sector(Code)', '17 Sector(Code)']
+
+    SECTION_PRODUCTS = {
+        "First Section (Domestic)": 1,
+        "JASDAQ(Standard / Domestic)": 2,
+        "Second Section(Domestic)": 3,
+        "Mothers (Domestic)": 4,
+        "JASDAQ(Growth/Domestic)": 5
+    }
+
     # データをこの変数に読み込む
     dfs = None
     # モデルをこの変数に読み込む
@@ -149,15 +183,18 @@ class ScoringService(object):
 
     @classmethod
     def calculate_glossary_of_financial_analysis(cls, row):
-        operating_profit_margin = 0
-        ordinary_profit_margin = 0
-        net_profit_margin = 0
-        total_asset_turnover = 0
-        net_sales_growth_rate = 0
-        ordinary_income_growth_rate = 0
-        operationg_income_growth_rate = 0
-        total_assets_growth_rate = 0
-        net_assets_growth_rate = 0
+        operating_profit_margin = -999
+        ordinary_profit_margin = -999
+        net_profit_margin = -999
+        total_asset_turnover = -999
+        net_sales_growth_rate = -999
+        ordinary_income_growth_rate = -999
+        operationg_income_growth_rate = -999
+        total_assets_growth_rate = -999
+        net_assets_growth_rate = -999
+        eps = -999
+        bps = -999
+        roe = -999
 
         # 売上高営業利益率 売上高営業利益率（％）＝営業利益÷売上高×100
         if row['Result_FinancialStatement NetSales'] != 0:
@@ -208,13 +245,22 @@ class ScoringService(object):
                 (row['Result_FinancialStatement NetAssets'] -
                 row['Previous_FinancialStatement NetAssets']) / \
                 row['Previous_FinancialStatement NetAssets'] * 100
-
+        # 一株当たり当期純利益（EPS）
+        if row['IssuedShareEquityQuote IssuedShare'] != 0:
+            eps = row['Result_FinancialStatement NetIncome'] / \
+                  row['IssuedShareEquityQuote IssuedShare']
+            # BPS 一株当たり純資産（円） ＝ 純資産 ÷ 発行済株式総数
+            bps = row['Result_FinancialStatement NetAssets'] / \
+                  row['IssuedShareEquityQuote IssuedShare']
+            # ROE EPS（一株当たり利益）÷ BPS（一株当たり純資産）× 100
+            if bps > 0:
+                roe = eps / bps * 100
         return pd.Series(
             [operating_profit_margin, ordinary_profit_margin,
              net_profit_margin, total_asset_turnover,
              net_sales_growth_rate, ordinary_income_growth_rate,
              operationg_income_growth_rate, total_assets_growth_rate,
-             net_assets_growth_rate])
+             net_assets_growth_rate, eps, bps, roe])
 
     @classmethod
     def get_features_for_predict(cls, dfs, code, start_dt="2016-01-01"):
@@ -226,17 +272,19 @@ class ScoringService(object):
         Returns:
             feature DataFrame (pd.DataFrame)
         """
-        ALPHA = 0.25
         # stock_finデータを読み込み
         stock_fin = dfs["stock_fin"].copy()
+
+        stock_list = dfs["stock_list"].copy()
+        stock_fin = pd.merge(stock_fin, stock_list, on=["Local Code"])
 
         # 特定の銘柄コードのデータに絞る
         fin_data = stock_fin[stock_fin["Local Code"] == code].copy()
         # 日付列をpd.Timestamp型に変換してindexに設定
         fin_data["datetime"] = pd.to_datetime(fin_data["base_date"])
         fin_data.set_index("datetime", inplace=True)
-        # fin_dataのnp.float64のデータのみを取得
-        fin_data = fin_data.select_dtypes(include=["float64"])
+        # fin_dataの特定のカラムを取得
+        fin_data = fin_data[cls.COLUMNS]
 
         # 特徴量追加
         fin_data = fin_data.join(fin_data
@@ -277,11 +325,11 @@ class ScoringService(object):
                   'net_sales_growth_rate', 'ordinary_income_growth_rate',
                   'operationg_income_growth_rate',
                   'total_assets_growth_rate',
-                  'net_assets_growth_rate']] = fin_data.apply(
-            cls.calculate_glossary_of_financial_analysis, axis=1)
+                  'net_assets_growth_rate','eps', 'bps', 'roe']] = \
+            fin_data.apply(cls.calculate_glossary_of_financial_analysis, axis=1)
 
         # 欠損値処理
-        fin_feats = fin_data.fillna(0)
+        fin_feats = fin_data.fillna(-999)
 
         # 特徴量の作成には過去60営業日のデータを使用しているため、
         # 予測対象日からバッファ含めて土日を除く過去90日遡った時点から特徴量を生成します
@@ -353,9 +401,9 @@ class ScoringService(object):
         feats['EWMA'] = feats['EndOfDayQuote ExchangeOfficialClose']
 
         for t in zip(feats.index, feats.index[1:]):
-            feats.loc[t[1], 'EWMA'] = ALPHA * feats.loc[
-                t[1], 'EndOfDayQuote ExchangeOfficialClose'] + (1 - ALPHA) * \
-                                      feats.loc[t[0], 'EWMA']
+            feats.loc[t[1], 'EWMA'] = cls.ALPHA * feats.loc[
+                t[1], 'EndOfDayQuote ExchangeOfficialClose'] + (1 - cls.ALPHA) \
+                                      * feats.loc[t[0], 'EWMA']
 
         # EMA 10日
         feats["ema_10"] = feats["EndOfDayQuote ExchangeOfficialClose"].ewm(
@@ -371,8 +419,15 @@ class ScoringService(object):
         feats["macd"] = feats["ema_12"] - feats["ema_26"]
         feats["signal"] = feats["macd"].ewm(span=9).mean()
 
+        # PBR 株価 ÷ BPS（1株あたり純資産）
+        feats["pbr"] = feats["EndOfDayQuote ExchangeOfficialClose"] \
+                       / fin_data["bps"]
+        # PER 株価 ÷ 1株当たり利益（EPS）
+        feats["per"] = feats["EndOfDayQuote ExchangeOfficialClose"] \
+                       / fin_data["eps"]
+
         # 欠損値処理
-        feats = feats.fillna(0)
+        feats = feats.fillna(-999)
         # 元データのカラムを削除
         feats = feats.drop(["EndOfDayQuote ExchangeOfficialClose"], axis=1)
 
@@ -384,13 +439,17 @@ class ScoringService(object):
         feats = pd.concat([feats, fin_feats], axis=1).dropna()
 
         # 欠損値処理を行います。
-        feats = feats.replace([np.inf, -np.inf], 0)
+        feats = feats.replace([np.inf, -np.inf], -999)
+
+        # 市場・商品区分を数値に変換
+        feats["Section/Products"] = cls.SECTION_PRODUCTS[feats
+        ["Section/Products"][0]]
 
         # 銘柄コードを設定
         feats["code"] = code
 
         # 生成対象日以降の特徴量に絞る
-        feats = feats.loc[pd.Timestamp(start_dt) :]
+        feats = feats.loc[pd.Timestamp(start_dt):]
 
         return feats
 
@@ -529,9 +588,8 @@ class ScoringService(object):
         # 日付と銘柄コードに絞り込み
         df = feats.loc[:, ["code"]].copy()
         # codeを出力形式の１列目と一致させる
-        df.loc[:, "code"] = df.index.strftime("%Y-%m-%d-") + df.loc[:, "code"].astype(
-            str
-        )
+        df.loc[:, "code"] = df.index.strftime("%Y-%m-%d-") + \
+                            df.loc[:, "code"].astype(str)
 
         # 出力対象列を定義
         output_columns = ["code"]
