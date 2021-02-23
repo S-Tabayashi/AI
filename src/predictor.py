@@ -183,18 +183,18 @@ class ScoringService(object):
 
     @classmethod
     def calculate_glossary_of_financial_analysis(cls, row):
-        operating_profit_margin = -999
-        ordinary_profit_margin = -999
-        net_profit_margin = -999
-        total_asset_turnover = -999
-        net_sales_growth_rate = -999
-        ordinary_income_growth_rate = -999
-        operationg_income_growth_rate = -999
-        total_assets_growth_rate = -999
-        net_assets_growth_rate = -999
-        eps = -999
-        bps = -999
-        roe = -999
+        operating_profit_margin = 0
+        ordinary_profit_margin = 0
+        net_profit_margin = 0
+        total_asset_turnover = 0
+        net_sales_growth_rate = 0
+        ordinary_income_growth_rate = 0
+        operationg_income_growth_rate = 0
+        total_assets_growth_rate = 0
+        net_assets_growth_rate = 0
+        eps = 0
+        bps = 0
+        roe = 0
 
         # 売上高営業利益率 売上高営業利益率（％）＝営業利益÷売上高×100
         if row['Result_FinancialStatement NetSales'] != 0:
@@ -329,7 +329,7 @@ class ScoringService(object):
             fin_data.apply(cls.calculate_glossary_of_financial_analysis, axis=1)
 
         # 欠損値処理
-        fin_feats = fin_data.fillna(-999)
+        fin_feats = fin_data.fillna(0)
 
         # 特徴量の作成には過去60営業日のデータを使用しているため、
         # 予測対象日からバッファ含めて土日を除く過去90日遡った時点から特徴量を生成します
@@ -427,7 +427,7 @@ class ScoringService(object):
                        / fin_data["eps"]
 
         # 欠損値処理
-        feats = feats.fillna(-999)
+        feats = feats.fillna(0)
         # 元データのカラムを削除
         feats = feats.drop(["EndOfDayQuote ExchangeOfficialClose"], axis=1)
 
@@ -439,7 +439,7 @@ class ScoringService(object):
         feats = pd.concat([feats, fin_feats], axis=1).dropna()
 
         # 欠損値処理を行います。
-        feats = feats.replace([np.inf, -np.inf], -999)
+        feats = feats.replace([np.inf, -np.inf], 0)
 
         # 市場・商品区分を数値に変換
         feats["Section/Products"] = cls.SECTION_PRODUCTS[feats
