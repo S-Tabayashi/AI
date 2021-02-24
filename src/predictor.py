@@ -473,7 +473,9 @@ class ScoringService(object):
             dfs, codes, feature, label
         )
         # モデル作成
-        model = RandomForestRegressor(random_state=0)
+        model = RandomForestRegressor(colsample_bytree=0.5, eta=0.1, gamma=0.4,
+                                      max_depth=5, n_estimators=100, nthread=1,
+                                      subsample=1, random_state=0)
         model.fit(train_X, train_y)
 
         return model
