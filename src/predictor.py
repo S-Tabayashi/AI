@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 #from sklearn.ensemble import RandomForestRegressor
 import xgboost as xgb
+# プログレスパーの表示
 from tqdm.auto import tqdm
 
 
@@ -24,29 +25,33 @@ class ScoringService(object):
 
     ALPHA = 0.25
 
-    COLUMNS = ['Result_FinancialStatement FiscalYear',
-               'Result_FinancialStatement NetSales',
-               'Result_FinancialStatement OperatingIncome',
-               'Result_FinancialStatement OrdinaryIncome',
-               'Result_FinancialStatement NetIncome',
-               'Result_FinancialStatement TotalAssets',
-               'Result_FinancialStatement NetAssets',
-               'Result_FinancialStatement CashFlowsFromOperatingActivities',
-               'Result_FinancialStatement CashFlowsFromFinancingActivities',
-               'Result_FinancialStatement CashFlowsFromInvestingActivities',
-               'Forecast_FinancialStatement FiscalYear',
-               'Forecast_FinancialStatement NetSales',
-               'Forecast_FinancialStatement OperatingIncome',
-               'Forecast_FinancialStatement OrdinaryIncome',
-               'Forecast_FinancialStatement NetIncome',
-               'Result_Dividend FiscalYear',
-               'Result_Dividend QuarterlyDividendPerShare',
-               'Result_Dividend AnnualDividendPerShare',
-               'Forecast_Dividend FiscalYear',
-               'Forecast_Dividend QuarterlyDividendPerShare',
-               'Forecast_Dividend AnnualDividendPerShare',
-               'IssuedShareEquityQuote IssuedShare', 'Section/Products',
-               '33 Sector(Code)', '17 Sector(Code)']
+    SELECT_FIN_DATA_COLUMNS = ['Result_FinancialStatement FiscalYear',
+                               'Result_FinancialStatement NetSales',
+                               'Result_FinancialStatement OperatingIncome',
+                               'Result_FinancialStatement OrdinaryIncome',
+                               'Result_FinancialStatement NetIncome',
+                               'Result_FinancialStatement TotalAssets',
+                               'Result_FinancialStatement NetAssets',
+                               'Result_FinancialStatement '
+                               'CashFlowsFromOperatingActivities',
+                               'Result_FinancialStatement '
+                               'CashFlowsFromFinancingActivities',
+                               'Result_FinancialStatement '
+                               'CashFlowsFromInvestingActivities',
+                               'Forecast_FinancialStatement FiscalYear',
+                               'Forecast_FinancialStatement NetSales',
+                               'Forecast_FinancialStatement OperatingIncome',
+                               'Forecast_FinancialStatement OrdinaryIncome',
+                               'Forecast_FinancialStatement NetIncome',
+                               'Result_Dividend FiscalYear',
+                               'Result_Dividend QuarterlyDividendPerShare',
+                               'Result_Dividend AnnualDividendPerShare',
+                               'Forecast_Dividend FiscalYear',
+                               'Forecast_Dividend QuarterlyDividendPerShare',
+                               'Forecast_Dividend AnnualDividendPerShare',
+                               'IssuedShareEquityQuote IssuedShare',
+                               'Section/Products', '33 Sector(Code)',
+                               '17 Sector(Code)']
 
     SECTION_PRODUCTS = {
         "First Section (Domestic)": 1,
@@ -285,7 +290,7 @@ class ScoringService(object):
         fin_data["datetime"] = pd.to_datetime(fin_data["base_date"])
         fin_data.set_index("datetime", inplace=True)
         # fin_dataの特定のカラムを取得
-        fin_data = fin_data[cls.COLUMNS]
+        fin_data = fin_data[cls.SELECT_FIN_DATA_COLUMNS]
 
         # 特徴量追加
         fin_data = fin_data.join(fin_data
@@ -474,14 +479,9 @@ class ScoringService(object):
             dfs, codes, feature, label
         )
         # モデル作成
-        '''
-        model = RandomForestRegressor(colsample_bytree=0.5, eta=0.1, gamma=0.4,
-                                      max_depth=5, n_estimators=100, nthread=1,
-                                      subsample=1, random_state=0)
-        '''
-        model = xgb.XGBClassifier(colsample_bytree=0.5, eta=0.1, gamma=0.4,
-                                  max_depth=5, n_estimators=100, nthread=1,
-                                  subsample=1, random_state=0)
+        model = xgb.XGBRegressor(colsample_bytree=0.5, eta=0.1, gamma=0.5,
+                                 max_depth=5, nthread=1,
+                                 subsample=1, random_state=0)
         model.fit(train_X, train_y)
 
         return model
