@@ -5,8 +5,8 @@ import pickle
 
 import numpy as np
 import pandas as pd
-#from sklearn.ensemble import RandomForestRegressor
-import xgboost as xgb
+from sklearn.ensemble import ExtraTreesRegressor
+#import xgboost as xgb
 # プログレスパーの表示
 from tqdm.auto import tqdm
 
@@ -479,9 +479,7 @@ class ScoringService(object):
             dfs, codes, feature, label
         )
         # モデル作成
-        model = xgb.XGBRegressor(colsample_bytree=0.5, eta=0.1, gamma=0.5,
-                                 max_depth=5, nthread=1,
-                                 subsample=1, random_state=0)
+        model = ExtraTreesRegressor(random_state=0)
         model.fit(train_X, train_y)
 
         return model
