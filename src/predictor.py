@@ -507,7 +507,7 @@ class ScoringService(object):
         )
         # 特徴量カラムを指定
         feature_columns = cls.get_feature_columns(
-            dfs, train_X, column_group='fundamental_only')
+            dfs, train_X, column_group='return_only')
         # モデル作成
         model = catboost.CatBoostRegressor(iterations=222, depth=9,
                                            learning_rate=0.18831273426065617,

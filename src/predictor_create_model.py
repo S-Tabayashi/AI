@@ -513,7 +513,7 @@ class ScoringService(object):
 
         # 特徴量カラムを指定
         feature_columns = cls.get_feature_columns(
-            dfs, train_X, column_group='fundamental_only')
+            dfs, train_X, column_group='return_only')
         # モデル作成
         print("start fit")
         model = catboost.CatBoostRegressor(iterations=222, depth=9,
@@ -594,7 +594,7 @@ class ScoringService(object):
             labels = cls.TARGET_LABELS
         for label in labels:
             print(label)
-            print("CatBoost from data")
+            print("CatBoost return from data")
             model = cls.create_model(cls.dfs, codes=codes, label=label)
             cls.save_model(model, label, model_path=model_path)
 
