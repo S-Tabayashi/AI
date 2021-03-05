@@ -508,10 +508,9 @@ class ScoringService(object):
         feature_columns = cls.get_feature_columns(
             dfs, train_X, column_group='fundamental_only')
         # モデル作成
-        model = xgb.XGBRegressor(colsample_bytree=0.5,
-                                 eta=0.1, gamma=0.5, max_depth=5,
-                                 n_estimators=50, random_state=0,
-                                 subsample=1)
+        model = xgb.XGBRegressor(eta=0.3, gamma=0.5, n_estimators=100,
+                                 max_depth=5, subsample=1.0,
+                                 colsample_bytree=0.5, random_state=0)
         model.fit(train_X[feature_columns].values, train_y.values)
 
         return model
