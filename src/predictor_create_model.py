@@ -6,7 +6,8 @@ import pickle
 import numpy as np
 import pandas as pd
 #from sklearn.ensemble import ExtraTreesRegressor
-import xgboost as xgb
+#import xgboost as xgb
+import catboost
 # プログレスパーの表示
 from tqdm.auto import tqdm
 
@@ -515,9 +516,12 @@ class ScoringService(object):
             dfs, train_X, column_group='fundamental_only')
         # モデル作成
         print("start fit")
-        model = xgb.XGBRegressor(eta=0.3, gamma=0.5, n_estimators=100,
-                                 max_depth=5, subsample= 1.0,
-                                 colsample_bytree=0.5,random_state=0)
+        model = catboost.CatBoostRegressor(iterations=222, depth=9,
+                                           learning_rate=0.18831273426065617,
+                                           random_strength=33,
+                                           bagging_temperature=0.06584346890760226,
+                                           od_type='Iter', od_wait=21,
+                                           random_state=0)
         model.fit(train_X[feature_columns].values, train_y.values)
 
         return model
@@ -590,7 +594,7 @@ class ScoringService(object):
             labels = cls.TARGET_LABELS
         for label in labels:
             print(label)
-            print("xgb from data")
+            print("CatBoost from data")
             model = cls.create_model(cls.dfs, codes=codes, label=label)
             cls.save_model(model, label, model_path=model_path)
 
