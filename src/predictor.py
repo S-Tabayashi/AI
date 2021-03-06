@@ -509,12 +509,36 @@ class ScoringService(object):
         feature_columns = cls.get_feature_columns(
             dfs, train_X, column_group='return_only')
         # モデル作成
-        model = catboost.CatBoostRegressor(iterations=222, depth=9,
-                                           learning_rate=0.18831273426065617,
-                                           random_strength=33,
-                                           bagging_temperature=0.06584346890760226,
-                                           od_type='Iter', od_wait=21,
-                                           random_state=0)
+        if label == 'label_high_20':
+            print("label_high_20")
+            feature_columns = cls.get_feature_columns(
+                dfs, train_X, column_group='fundamental_only')
+            model = catboost.CatBoostRegressor(iterations=50, depth=9,
+                                               learning_rate=0.18831273426065617,
+                                               random_strength=10,
+                                               bagging_temperature=0.01,
+                                               od_type='IncToDec', od_wait=10,
+                                               random_state=0)
+        elif label == 'label_low_20':
+            print("label_low_20")
+            feature_columns = cls.get_feature_columns(
+                dfs, train_X, column_group='return_only')
+            model = catboost.CatBoostRegressor(iterations=100, depth=9,
+                                               learning_rate=0.18831273426065617,
+                                               random_strength=5,
+                                               bagging_temperature=0.01,
+                                               od_type='IncToDec', od_wait=10,
+                                               random_state=0)
+        else:
+            feature_columns = cls.get_feature_columns(
+                dfs, train_X, column_group='return_only')
+            model = catboost.CatBoostRegressor(iterations=222, depth=9,
+                                               learning_rate=0.18831273426065617,
+                                               random_strength=33,
+                                               bagging_temperature=0.06584346890760226,
+                                               od_type='Iter', od_wait=21,
+                                               random_state=0)
+
         model.fit(train_X[feature_columns].values, train_y.values)
 
         return model
@@ -636,11 +660,18 @@ class ScoringService(object):
         output_columns = ["code"]
 
         # 特徴量カラムを指定
-        feature_columns = cls.get_feature_columns(
-            cls.dfs, feats,column_group='fundamental_only')
 
         # 目的変数毎に予測
         for label in labels:
+            if label == 'label_high_20':
+                feature_columns = cls.get_feature_columns(
+                    cls.dfs, feats, column_group='fundamental_only')
+            elif label == 'label_low_20':
+                feature_columns = cls.get_feature_columns(
+                    cls.dfs, feats, column_group='return_only')
+            else:
+                feature_columns = cls.get_feature_columns(
+                    cls.dfs, feats, column_group='return_only')
             # 予測実施
             df[label] = cls.models[label].predict(feats[feature_columns].values)
             # 出力対象列に追加
