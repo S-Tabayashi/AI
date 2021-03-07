@@ -5,9 +5,9 @@ import pickle
 
 import numpy as np
 import pandas as pd
-#from sklearn.ensemble import ExtraTreesRegressor
+from sklearn.ensemble import ExtraTreesRegressor
 #import xgboost as xgb
-import catboost
+#import catboost
 # プログレスパーの表示
 from tqdm.auto import tqdm
 
@@ -506,38 +506,34 @@ class ScoringService(object):
             dfs, codes, feature, label
         )
         # 特徴量カラムを指定
-        feature_columns = cls.get_feature_columns(
-            dfs, train_X, column_group='return_only')
         # モデル作成
         if label == 'label_high_20':
-            print("label_high_20")
             feature_columns = cls.get_feature_columns(
-                dfs, train_X, column_group='fundamental_only')
-            model = catboost.CatBoostRegressor(iterations=50, depth=9,
-                                               learning_rate=0.18831273426065617,
-                                               random_strength=10,
-                                               bagging_temperature=0.01,
-                                               od_type='IncToDec', od_wait=10,
-                                               random_state=0)
+                dfs, train_X, column_group='fundamental+technical')
+            model = ExtraTreesRegressor(max_depth=7,
+                                        min_samples_leaf=1,
+                                        min_samples_split=2,
+                                        min_weight_fraction_leaf=0.1,
+                                        n_estimators=100,
+                                        random_state=0)
         elif label == 'label_low_20':
-            print("label_low_20")
             feature_columns = cls.get_feature_columns(
-                dfs, train_X, column_group='return_only')
-            model = catboost.CatBoostRegressor(iterations=100, depth=9,
-                                               learning_rate=0.18831273426065617,
-                                               random_strength=5,
-                                               bagging_temperature=0.01,
-                                               od_type='IncToDec', od_wait=10,
-                                               random_state=0)
+                dfs, train_X, column_group='fundamental+technical')
+            model = ExtraTreesRegressor(max_depth=7,
+                                        min_samples_leaf=1,
+                                        min_samples_split=2,
+                                        min_weight_fraction_leaf=0.1,
+                                        n_estimators=100,
+                                        random_state=0)
         else:
             feature_columns = cls.get_feature_columns(
-                dfs, train_X, column_group='return_only')
-            model = catboost.CatBoostRegressor(iterations=222, depth=9,
-                                               learning_rate=0.18831273426065617,
-                                               random_strength=33,
-                                               bagging_temperature=0.06584346890760226,
-                                               od_type='Iter', od_wait=21,
-                                               random_state=0)
+                dfs, train_X, column_group='fundamental+technical')
+            model = ExtraTreesRegressor(max_depth=7,
+                                        min_samples_leaf=1,
+                                        min_samples_split=2,
+                                        min_weight_fraction_leaf=0.1,
+                                        n_estimators=100,
+                                        random_state=0)
 
         model.fit(train_X[feature_columns].values, train_y.values)
 
@@ -665,13 +661,13 @@ class ScoringService(object):
         for label in labels:
             if label == 'label_high_20':
                 feature_columns = cls.get_feature_columns(
-                    cls.dfs, feats, column_group='fundamental_only')
+                    cls.dfs, feats, column_group='fundamental+technical')
             elif label == 'label_low_20':
                 feature_columns = cls.get_feature_columns(
-                    cls.dfs, feats, column_group='return_only')
+                    cls.dfs, feats, column_group='fundamental+technical')
             else:
                 feature_columns = cls.get_feature_columns(
-                    cls.dfs, feats, column_group='return_only')
+                    cls.dfs, feats, column_group='fundamental+technical')
             # 予測実施
             df[label] = cls.models[label].predict(feats[feature_columns].values)
             # 出力対象列に追加
