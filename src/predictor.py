@@ -5,8 +5,8 @@ import pickle
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import ExtraTreesRegressor
-#import xgboost as xgb
+#from sklearn.ensemble import ExtraTreesRegressor
+import xgboost as xgb
 #import catboost
 # プログレスパーの表示
 from tqdm.auto import tqdm
@@ -510,30 +510,36 @@ class ScoringService(object):
         if label == 'label_high_20':
             feature_columns = cls.get_feature_columns(
                 dfs, train_X, column_group='fundamental+technical')
-            model = ExtraTreesRegressor(max_depth=7,
-                                        min_samples_leaf=1,
-                                        min_samples_split=2,
-                                        min_weight_fraction_leaf=0.1,
-                                        n_estimators=100,
-                                        random_state=0)
+            model = xgb.XGBRegressor(booster='gbtree',
+                                     colsample_bytree=1,
+                                     eta=0.109,
+                                     gamma=8.0,
+                                     max_depth=10,
+                                     n_estimators=50,
+                                     subsample=1,
+                                     random_state=0)
         elif label == 'label_low_20':
             feature_columns = cls.get_feature_columns(
                 dfs, train_X, column_group='fundamental+technical')
-            model = ExtraTreesRegressor(max_depth=7,
-                                        min_samples_leaf=1,
-                                        min_samples_split=2,
-                                        min_weight_fraction_leaf=0.1,
-                                        n_estimators=100,
-                                        random_state=0)
+            model = xgb.XGBRegressor(booster='gbtree',
+                                     colsample_bytree=1,
+                                     eta=0.109,
+                                     gamma=8.0,
+                                     max_depth=10,
+                                     n_estimators=50,
+                                     subsample=1,
+                                     random_state=0)
         else:
             feature_columns = cls.get_feature_columns(
                 dfs, train_X, column_group='fundamental+technical')
-            model = ExtraTreesRegressor(max_depth=7,
-                                        min_samples_leaf=1,
-                                        min_samples_split=2,
-                                        min_weight_fraction_leaf=0.1,
-                                        n_estimators=100,
-                                        random_state=0)
+            model = xgb.XGBRegressor(booster='gbtree',
+                                     colsample_bytree=1,
+                                     eta=0.109,
+                                     gamma=8.0,
+                                     max_depth=10,
+                                     n_estimators=50,
+                                     subsample=1,
+                                     random_state=0)
 
         model.fit(train_X[feature_columns].values, train_y.values)
 
