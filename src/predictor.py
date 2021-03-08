@@ -583,7 +583,7 @@ class ScoringService(object):
             for label in labels:
                 m = os.path.join(model_path, f"my_model_{label}.pkl")
                 with open(m, "rb") as f:
-                    # pickle形式で保存されているモデルを読み込み
+                # pickle形式で保存されているモデルを読み込み
                     cls.models[label] = pickle.load(f)
             return True
         except Exception as e:
