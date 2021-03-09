@@ -517,36 +517,42 @@ class ScoringService(object):
             print("ex_label_high_20_all")
             feature_columns = cls.get_feature_columns(
                 dfs, train_X, column_group='fundamental+technical')
-            model = xgb.XGBRegressor(booster='gbtree',
-                                     colsample_bytree=1,
-                                     eta=0.109,
-                                     gamma=20.0,
-                                     max_depth=10,
-                                     n_estimators=50,
-                                     subsample=1,
+            model = xgb.XGBRegressor(alpha=0,
+                                     colsample_bytree=0.9,
+                                     gamma=0,
+                                     learning_rate=0.01,
+                                     max_depth=5,
+                                     min_child_weight=3,
+                                     n_estimators=700,
+                                     objective="reg:pseudohubererror",
+                                     subsample=0.9,
                                      random_state=0)
         elif label == 'label_low_20':
             print("ex_label_low_20_all")
             feature_columns = cls.get_feature_columns(
                 dfs, train_X, column_group='fundamental+technical')
-            model = xgb.XGBRegressor(booster='gbtree',
-                                     colsample_bytree=1,
-                                     eta=0.109,
-                                     gamma=20.0,
-                                     max_depth=10,
-                                     n_estimators=50,
-                                     subsample=1,
+            model = xgb.XGBRegressor(alpha=0,
+                                     colsample_bytree=0.9,
+                                     gamma=0,
+                                     learning_rate=0.01,
+                                     max_depth=5,
+                                     min_child_weight=3,
+                                     n_estimators=700,
+                                     objective="reg:pseudohubererror",
+                                     subsample=0.9,
                                      random_state=0)
         else:
             feature_columns = cls.get_feature_columns(
                 dfs, train_X, column_group='fundamental+technical')
-            model = xgb.XGBRegressor(booster='gbtree',
-                                     colsample_bytree=1,
-                                     eta=0.109,
-                                     gamma=20.0,
-                                     max_depth=10,
-                                     n_estimators=50,
-                                     subsample=1,
+            model = xgb.XGBRegressor(alpha=0,
+                                     colsample_bytree=0.9,
+                                     gamma=0,
+                                     learning_rate=0.01,
+                                     max_depth=5,
+                                     min_child_weight=3,
+                                     n_estimators=700,
+                                     objective="reg:pseudohubererror",
+                                     subsample=0.9,
                                      random_state=0)
         model.fit(train_X[feature_columns].values, train_y.values)
 
