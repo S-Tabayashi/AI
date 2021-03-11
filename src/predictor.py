@@ -5,9 +5,9 @@ import pickle
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import ExtraTreesRegressor
+#from sklearn.ensemble import ExtraTreesRegressor
 #import xgboost as xgb
-#import catboost
+import catboost
 # プログレスパーの表示
 from tqdm.auto import tqdm
 
@@ -533,30 +533,24 @@ class ScoringService(object):
         if label == 'label_high_20':
             feature_columns = cls.get_feature_columns(
                 dfs, train_X, column_group='selected_columns')
-            model = ExtraTreesRegressor(max_depth=5,
-                                        min_samples_leaf=1,
-                                        min_samples_split=2,
-                                        min_weight_fraction_leaf=0.1,
-                                        n_estimators=700,
-                                        random_state=0)
+            model = catboost.CatBoostRegressor(depth=5,
+                                               iterations=700,
+                                               learning_rate=0.01,
+                                               random_seed=0)
         elif label == 'label_low_20':
             feature_columns = cls.get_feature_columns(
                 dfs, train_X, column_group='selected_columns')
-            model = ExtraTreesRegressor(max_depth=5,
-                                        min_samples_leaf=1,
-                                        min_samples_split=2,
-                                        min_weight_fraction_leaf=0.1,
-                                        n_estimators=700,
-                                        random_state=0)
+            model = catboost.CatBoostRegressor(depth=5,
+                                               iterations=700,
+                                               learning_rate=0.01,
+                                               random_seed=0)
         else:
             feature_columns = cls.get_feature_columns(
                 dfs, train_X, column_group='selected_columns')
-            model = ExtraTreesRegressor(max_depth=5,
-                                        min_samples_leaf=1,
-                                        min_samples_split=2,
-                                        min_weight_fraction_leaf=0.1,
-                                        n_estimators=700,
-                                        random_state=0)
+            model = catboost.CatBoostRegressor(depth=5,
+                                               iterations=700,
+                                               learning_rate=0.01,
+                                               random_seed=0)
 
         model.fit(train_X[feature_columns].values, train_y.values)
 
