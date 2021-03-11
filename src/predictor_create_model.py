@@ -544,7 +544,7 @@ class ScoringService(object):
                                         min_samples_leaf=1,
                                         min_samples_split=2,
                                         min_weight_fraction_leaf=0.1,
-                                        n_estimators=100,
+                                        n_estimators=700,
                                         random_state=0)
         elif label == 'label_low_20':
             print("ex_label_low_20_all")
@@ -554,7 +554,7 @@ class ScoringService(object):
                                         min_samples_leaf=1,
                                         min_samples_split=2,
                                         min_weight_fraction_leaf=0.1,
-                                        n_estimators=100,
+                                        n_estimators=700,
                                         random_state=0)
         else:
             feature_columns = cls.get_feature_columns(
@@ -563,7 +563,7 @@ class ScoringService(object):
                                         min_samples_leaf=1,
                                         min_samples_split=2,
                                         min_weight_fraction_leaf=0.1,
-                                        n_estimators=100,
+                                        n_estimators=700,
                                         random_state=0)
         model.fit(train_X[feature_columns].values, train_y.values)
 
