@@ -5,8 +5,8 @@ import pickle
 
 import numpy as np
 import pandas as pd
-#from sklearn.ensemble import ExtraTreesRegressor
-import xgboost as xgb
+from sklearn.ensemble import ExtraTreesRegressor
+#import xgboost as xgb
 #import catboost
 # プログレスパーの表示
 from tqdm.auto import tqdm
@@ -61,6 +61,28 @@ class ScoringService(object):
         "Mothers (Domestic)": 4,
         "JASDAQ(Growth/Domestic)": 5
     }
+
+    FEATURES = ['MA_gap_2month',
+                'MA_gap_3month',
+                'volatility_2month',
+                'volatility_3month',
+                'Result_Dividend FiscalYear',
+                'return_3month',
+                'Forecast_Dividend FiscalYear',
+                'volatility_1month',
+                'Forecast_FinancialStatement FiscalYear',
+                'MA_gap_1month',
+                'pbr',
+                'Result_FinancialStatement FiscalYear',
+                'return_1month',
+                'ema_12',
+                'Result_FinancialStatement TotalAssets',
+                'signal',
+                'Previous_FinancialStatement NetIncome',
+                'per',
+                'Result_FinancialStatement CashFlowsFromOperatingActivities',
+                'Result_FinancialStatement CashFlowsFromInvestingActivities',
+                'ema_10']
 
     # データをこの変数に読み込む
     dfs = None
@@ -483,6 +505,7 @@ class ScoringService(object):
             "technical_only": technical_cols,
             "fundamental+technical": list(fundamental_cols) + list(
                 technical_cols),
+            "selected_columns": cls.FEATURES,
         }
         return columns[column_group]
 
@@ -516,44 +539,32 @@ class ScoringService(object):
         if label == 'label_high_20':
             print("ex_label_high_20_all")
             feature_columns = cls.get_feature_columns(
-                dfs, train_X, column_group='fundamental+technical')
-            model = xgb.XGBRegressor(alpha=0,
-                                     colsample_bytree=0.9,
-                                     gamma=0,
-                                     learning_rate=0.01,
-                                     max_depth=5,
-                                     min_child_weight=3,
-                                     n_estimators=700,
-                                     objective="reg:pseudohubererror",
-                                     subsample=0.9,
-                                     random_state=0)
+                dfs, train_X, column_group='selected_columns')
+            model = ExtraTreesRegressor(max_depth=5,
+                                        min_samples_leaf=1,
+                                        min_samples_split=2,
+                                        min_weight_fraction_leaf=0.1,
+                                        n_estimators=100,
+                                        random_state=0)
         elif label == 'label_low_20':
             print("ex_label_low_20_all")
             feature_columns = cls.get_feature_columns(
-                dfs, train_X, column_group='fundamental+technical')
-            model = xgb.XGBRegressor(alpha=0,
-                                     colsample_bytree=0.9,
-                                     gamma=0,
-                                     learning_rate=0.01,
-                                     max_depth=5,
-                                     min_child_weight=3,
-                                     n_estimators=700,
-                                     objective="reg:pseudohubererror",
-                                     subsample=0.9,
-                                     random_state=0)
+                dfs, train_X, column_group='selected_columns')
+            model = ExtraTreesRegressor(max_depth=5,
+                                        min_samples_leaf=1,
+                                        min_samples_split=2,
+                                        min_weight_fraction_leaf=0.1,
+                                        n_estimators=100,
+                                        random_state=0)
         else:
             feature_columns = cls.get_feature_columns(
-                dfs, train_X, column_group='fundamental+technical')
-            model = xgb.XGBRegressor(alpha=0,
-                                     colsample_bytree=0.9,
-                                     gamma=0,
-                                     learning_rate=0.01,
-                                     max_depth=5,
-                                     min_child_weight=3,
-                                     n_estimators=700,
-                                     objective="reg:pseudohubererror",
-                                     subsample=0.9,
-                                     random_state=0)
+                dfs, train_X, column_group='selected_columns')
+            model = ExtraTreesRegressor(max_depth=5,
+                                        min_samples_leaf=1,
+                                        min_samples_split=2,
+                                        min_weight_fraction_leaf=0.1,
+                                        n_estimators=100,
+                                        random_state=0)
         model.fit(train_X[feature_columns].values, train_y.values)
 
         return model
@@ -679,13 +690,13 @@ class ScoringService(object):
         for label in labels:
             if label == 'label_high_20':
                 feature_columns = cls.get_feature_columns(
-                    cls.dfs, feats, column_group='fundamental+technical')
+                    cls.dfs, feats, column_group='selected_columns')
             elif label == 'label_low_20':
                 feature_columns = cls.get_feature_columns(
-                    cls.dfs, feats, column_group='fundamental+technical')
+                    cls.dfs, feats, column_group='selected_columns')
             else:
                 feature_columns = cls.get_feature_columns(
-                    cls.dfs, feats, column_group='fundamental+technical')
+                    cls.dfs, feats, column_group='selected_columns')
             # 予測実施
             df[label] = cls.models[label].predict(feats[feature_columns].values)
             # 出力対象列に追加
