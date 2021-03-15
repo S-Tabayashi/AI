@@ -11,6 +11,7 @@ import catboost
 # プログレスパーの表示
 from tqdm.auto import tqdm
 
+from split_data import SplitData
 
 class ScoringService(object):
     # 訓練期間終了日
@@ -159,7 +160,7 @@ class ScoringService(object):
         trains_y, vals_y, tests_y = [], [], []
 
         # 銘柄コード毎に特徴量を作成
-        for code in tqdm(codes):
+        for i, code in enumerate(tqdm(codes)):
             # 特徴量取得
             feats = feature[feature["code"] == code]
 
@@ -199,16 +200,25 @@ class ScoringService(object):
                 trains_y.append(_train_y)
                 vals_y.append(_val_y)
                 tests_y.append(_test_y)
-        # 銘柄毎に作成した説明変数データを結合します。
-        train_X = pd.concat(trains_X)
-        val_X = pd.concat(vals_X)
-        test_X = pd.concat(tests_X)
-        # 銘柄毎に作成した目的変数データを結合します。
-        train_y = pd.concat(trains_y)
-        val_y = pd.concat(vals_y)
-        test_y = pd.concat(tests_y)
 
-        return train_X, train_y, val_X, val_y, test_X, test_y
+            if i == 0:
+                # 初回はデータをnumpy配列に変換する
+                train_X = SplitData(_train_X)
+                val_X = SplitData(_val_X)
+                test_X = SplitData(_test_X)
+                train_y = SplitData(_train_y)
+                val_y = SplitData(_val_y)
+                test_y = SplitData(_test_y)
+            else:
+                train_X.add_data(_train_X)
+                val_X.add_data(_val_X)
+                test_X.add_data(_test_X)
+                train_y.add_data(_train_y)
+                val_y.add_data(_val_y)
+                test_y.add_data(_test_y)
+
+        return train_X.get_data(), train_y.get_data(), val_X.get_data(), \
+               val_y.get_data(), test_X.get_data(), test_y.get_data()
 
     @classmethod
     def calculate_glossary_of_financial_analysis(cls, row):
