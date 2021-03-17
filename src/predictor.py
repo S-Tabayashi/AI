@@ -5,13 +5,18 @@ import pickle
 
 import numpy as np
 import pandas as pd
-#from sklearn.ensemble import ExtraTreesRegressor
-#import xgboost as xgb
-import catboost
+
 # プログレスパーの表示
 from tqdm.auto import tqdm
 
-from split_data import SplitData
+# Sequentialのインポート
+import tensorflow as tf
+from keras.models import Sequential
+# Dense
+from keras.layers import Dense
+import keras
+from scipy import stats
+
 
 class ScoringService(object):
     # 訓練期間終了日
@@ -160,7 +165,7 @@ class ScoringService(object):
         trains_y, vals_y, tests_y = [], [], []
 
         # 銘柄コード毎に特徴量を作成
-        for i, code in enumerate(tqdm(codes)):
+        for code in tqdm(codes):
             # 特徴量取得
             feats = feature[feature["code"] == code]
 
@@ -200,25 +205,16 @@ class ScoringService(object):
                 trains_y.append(_train_y)
                 vals_y.append(_val_y)
                 tests_y.append(_test_y)
+        # 銘柄毎に作成した説明変数データを結合します。
+        train_X = pd.concat(trains_X)
+        val_X = pd.concat(vals_X)
+        test_X = pd.concat(tests_X)
+        # 銘柄毎に作成した目的変数データを結合します。
+        train_y = pd.concat(trains_y)
+        val_y = pd.concat(vals_y)
+        test_y = pd.concat(tests_y)
 
-            if i == 0:
-                # 初回はデータをnumpy配列に変換する
-                train_X = SplitData(_train_X)
-                val_X = SplitData(_val_X)
-                test_X = SplitData(_test_X)
-                train_y = SplitData(_train_y)
-                val_y = SplitData(_val_y)
-                test_y = SplitData(_test_y)
-            else:
-                train_X.add_data(_train_X)
-                val_X.add_data(_val_X)
-                test_X.add_data(_test_X)
-                train_y.add_data(_train_y)
-                val_y.add_data(_val_y)
-                test_y.add_data(_test_y)
-
-        return train_X.get_data(), train_y.get_data(), val_X.get_data(), \
-               val_y.get_data(), test_X.get_data(), test_y.get_data()
+        return train_X, train_y, val_X, val_y, test_X, test_y
 
     @classmethod
     def calculate_glossary_of_financial_analysis(cls, row):
@@ -535,34 +531,44 @@ class ScoringService(object):
             buff.append(cls.get_features_for_predict(cls.dfs, code))
         feature = pd.concat(buff)
         # 特徴量と目的変数を一致させて、データを分割
-        train_X, train_y, _, _, _, _ = cls.get_features_and_label(
+        train_X, train_y, val_X, val_y, _, _ = cls.get_features_and_label(
             dfs, codes, feature, label
         )
         # 特徴量カラムを指定
         # モデル作成
-        if label == 'label_high_20':
-            feature_columns = cls.get_feature_columns(
-                dfs, train_X, column_group='selected_columns')
-            model = catboost.CatBoostRegressor(depth=5,
-                                               iterations=700,
-                                               learning_rate=0.01,
-                                               random_seed=0)
-        elif label == 'label_low_20':
-            feature_columns = cls.get_feature_columns(
-                dfs, train_X, column_group='selected_columns')
-            model = catboost.CatBoostRegressor(depth=5,
-                                               iterations=700,
-                                               learning_rate=0.01,
-                                               random_seed=0)
-        else:
-            feature_columns = cls.get_feature_columns(
-                dfs, train_X, column_group='selected_columns')
-            model = catboost.CatBoostRegressor(depth=5,
-                                               iterations=700,
-                                               learning_rate=0.01,
-                                               random_seed=0)
+        train_X = train_X.drop(columns=["code"])
+        train_X = stats.zscore(train_X)
+        val_X = val_X.drop(columns=["code"])
+        val_X = stats.zscore(val_X)
 
-        model.fit(train_X[feature_columns].values, train_y.values)
+        # ネットワークの各層のサイズの定義
+        num_l1 = 64
+        num_l2 = 64
+        num_output = 1
+
+        # 以下、ネットワークを構築
+        model = Sequential()
+        # 第1層
+        model.add(Dense(num_l1, activation='tanh',
+                        input_shape=(train_X.shape[1],)))
+        # 第2層
+        model.add(Dense(num_l2, activation='tanh'))
+
+        # 出力層
+        model.add(Dense(num_output))
+        # ネットワークのコンパイル
+        model.compile(loss='mse',
+                      optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9,
+                                                      beta_2=0.999,
+                                                      epsilon=None, decay=0.0,
+                                                      amsgrad=False),
+                      metrics=['mae'])
+
+        early_stop = keras.callbacks.EarlyStopping(monitor='val_loss',
+                                                   patience=10)
+
+        model.fit(x=train_X, y=train_y, epochs=80,
+                  validation_data=(val_X, val_y), callbacks=[early_stop])
 
         return model
 
@@ -579,9 +585,7 @@ class ScoringService(object):
         # tag::save_model_partial[]
         # モデル保存先ディレクトリを作成
         os.makedirs(model_path, exist_ok=True)
-        with open(os.path.join(model_path, f"my_model_{label}.pkl"), "wb") as f:
-            # モデルをpickle形式で保存
-            pickle.dump(model, f)
+        model.save(os.path.join(model_path, f"my_model_{label}"))
         # end::save_model_partial[]
 
     @classmethod
@@ -602,10 +606,9 @@ class ScoringService(object):
             labels = cls.TARGET_LABELS
         try:
             for label in labels:
-                m = os.path.join(model_path, f"my_model_{label}.pkl")
-                with open(m, "rb") as f:
+                m = os.path.join(model_path, f"my_model_{label}")
                 # pickle形式で保存されているモデルを読み込み
-                    cls.models[label] = pickle.load(f)
+                cls.models[label] = tf.keras.models.load_model(m)
             return True
         except Exception as e:
             print(e)
@@ -688,15 +691,16 @@ class ScoringService(object):
         for label in labels:
             if label == 'label_high_20':
                 feature_columns = cls.get_feature_columns(
-                    cls.dfs, feats, column_group='selected_columns')
+                    cls.dfs, feats, column_group='fundamental+technical')
             elif label == 'label_low_20':
                 feature_columns = cls.get_feature_columns(
-                    cls.dfs, feats, column_group='selected_columns')
+                    cls.dfs, feats, column_group='fundamental+technical')
             else:
                 feature_columns = cls.get_feature_columns(
-                    cls.dfs, feats, column_group='selected_columns')
+                    cls.dfs, feats, column_group='fundamental+technical')
             # 予測実施
-            df[label] = cls.models[label].predict(feats[feature_columns].values)
+            df[label] = cls.models[label].predict(
+                stats.zscore(feats[feature_columns]))
             # 出力対象列に追加
             output_columns.append(label)
 
