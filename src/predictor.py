@@ -17,6 +17,8 @@ import keras
 from scipy import stats
 import tensorflow as tf
 from keras.layers import LeakyReLU
+from keras.layers.advanced_activations import PReLU
+from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 
 class ScoringService(object):
     # 訓練期間終了日
@@ -68,27 +70,42 @@ class ScoringService(object):
         "JASDAQ(Growth/Domestic)": 5
     }
 
-    FEATURES = ['MA_gap_2month',
-                'MA_gap_3month',
-                'volatility_2month',
-                'volatility_3month',
-                'Result_Dividend FiscalYear',
-                'return_3month',
-                'Forecast_Dividend FiscalYear',
-                'volatility_1month',
-                'Forecast_FinancialStatement FiscalYear',
-                'MA_gap_1month',
-                'pbr',
-                'Result_FinancialStatement FiscalYear',
-                'return_1month',
-                'ema_12',
+    FEATURES = ['return_1month', 'return_2month', 'return_3month',
+                'volatility_1month', 'volatility_2month', 'volatility_3month',
+                'MA_gap_1month', 'MA_gap_2month', 'MA_gap_3month', 'EWMA',
+                'ema_10', 'ema_12', 'ema_26', 'macd', 'signal', 'pbr', 'per',
+                'Result_FinancialStatement NetSales',
+                'Result_FinancialStatement OperatingIncome',
+                'Result_FinancialStatement OrdinaryIncome',
+                'Result_FinancialStatement NetIncome',
                 'Result_FinancialStatement TotalAssets',
-                'signal',
-                'Previous_FinancialStatement NetIncome',
-                'per',
+                'Result_FinancialStatement NetAssets',
                 'Result_FinancialStatement CashFlowsFromOperatingActivities',
+                'Result_FinancialStatement CashFlowsFromFinancingActivities',
                 'Result_FinancialStatement CashFlowsFromInvestingActivities',
-                'ema_10']
+                'Forecast_FinancialStatement NetSales',
+                'Forecast_FinancialStatement OperatingIncome',
+                'Forecast_FinancialStatement OrdinaryIncome',
+                'Forecast_FinancialStatement NetIncome',
+                'Result_Dividend QuarterlyDividendPerShare',
+                'Result_Dividend AnnualDividendPerShare',
+                'Forecast_Dividend QuarterlyDividendPerShare',
+                'Forecast_Dividend AnnualDividendPerShare',
+                'IssuedShareEquityQuote IssuedShare',
+                'Previous_FinancialStatement NetSales',
+                'Previous_FinancialStatement OperatingIncome',
+                'Previous_FinancialStatement OrdinaryIncome',
+                'Previous_FinancialStatement NetIncome',
+                'Previous_FinancialStatement TotalAssets',
+                'Previous_FinancialStatement NetAssets',
+                'Previous_FinancialStatement CashFlowsFromOperatingActivities',
+                'Previous_FinancialStatement CashFlowsFromFinancingActivities',
+                'Previous_FinancialStatement CashFlowsFromInvestingActivities',
+                'operating_profit_margin', 'ordinary_profit_margin',
+                'net_profit_margin', 'total_asset_turnover',
+                'net_sales_growth_rate', 'ordinary_income_growth_rate',
+                'operationg_income_growth_rate', 'total_assets_growth_rate',
+                'net_assets_growth_rate', 'eps', 'bps', 'roe']
 
     # データをこの変数に読み込む
     dfs = None
@@ -536,41 +553,75 @@ class ScoringService(object):
         )
         # 特徴量カラムを指定
         # モデル作成
-        train_X = train_X.drop(columns=["code"])
+        train_X = train_X.drop(
+            columns=["code", "Result_FinancialStatement FiscalYear",
+                     "Forecast_FinancialStatement FiscalYear",
+                     "Result_Dividend FiscalYear",
+                     "Forecast_Dividend FiscalYear", "Section/Products",
+                     "33 Sector(Code)", "17 Sector(Code)"])
         train_X = stats.zscore(train_X)
-        val_X = val_X.drop(columns=["code"])
+        train_X = train_X.reshape((train_X.shape[0], 1, train_X.shape[1]))
+        val_X = val_X.drop(
+            columns=["code", "Result_FinancialStatement FiscalYear",
+                     "Forecast_FinancialStatement FiscalYear",
+                     "Result_Dividend FiscalYear",
+                     "Forecast_Dividend FiscalYear", "Section/Products",
+                     "33 Sector(Code)", "17 Sector(Code)"])
         val_X = stats.zscore(val_X)
+        val_X = val_X.reshape((val_X.shape[0], 1, val_X.shape[1]))
 
         # ネットワークの各層のサイズの定義
-        num_l1 = 200
-        num_l2 = 100
-        num_l3 = 50
-        num_output = 1
-
-        # 以下、ネットワークを構築
         model = Sequential()
-        # 第1層
-        model.add(Dense(num_l1, input_shape=(train_X.shape[1],),
-                        kernel_initializer='he_normal'))
-        model.add(LeakyReLU(alpha=0.01))
-        # 第2層
-        model.add(Dense(num_l2, activation='tanh'))
+        model.add(LSTM(512, input_shape=(train_X.shape[1], train_X.shape[2])))
         model.add(BatchNormalization())
-        # 第3層#
-        model.add(Dense(num_l3, activation='tanh'))
+        model.add(Dropout(.2))
+
+        model.add(Dense(256))
+        model.add(PReLU())
         model.add(BatchNormalization())
+        model.add(Dropout(.1))
+
+        model.add(Dense(256))
+        model.add(PReLU())
+        model.add(BatchNormalization())
+        model.add(Dropout(.1))
+
+        model.add(Dense(128))
+        model.add(PReLU())
+        model.add(BatchNormalization())
+        model.add(Dropout(.05))
+
+        model.add(Dense(64))
+        model.add(PReLU())
+        model.add(BatchNormalization())
+        model.add(Dropout(.05))
+
+        model.add(Dense(32))
+        model.add(PReLU())
+        model.add(BatchNormalization())
+        model.add(Dropout(.05))
+
+        model.add(Dense(16))
+        model.add(PReLU())
+        model.add(BatchNormalization())
+        model.add(Dropout(.05))
+
+        model.add(Dense(1))
+
         # 出力層
         model.add(Dense(num_output))
         # ネットワークのコンパイル
         model.compile(loss='mse', optimizer=keras.optimizers.Adam(0.001),
-                      metrics=['mae'])
+                      metrics=['mse'])
 
-
-        early_stop = keras.callbacks.EarlyStopping(monitor='val_loss',
-                                                   patience=10)
+        callbacks = [
+            EarlyStopping(monitor='val_loss', patience=10, verbose=0),
+            ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=7,
+                              verbose=1, epsilon=1e-4, mode='min')
+        ]
 
         model.fit(x=train_X, y=train_y, epochs=80,
-                  validation_data=(val_X, val_y), callbacks=[early_stop])
+                  validation_data=(val_X, val_y), callbacks=[callbacks])
 
         return model
 
@@ -693,16 +744,17 @@ class ScoringService(object):
         for label in labels:
             if label == 'label_high_20':
                 feature_columns = cls.get_feature_columns(
-                    cls.dfs, feats, column_group='fundamental+technical')
+                    cls.dfs, feats, column_group='selected_columns')
             elif label == 'label_low_20':
                 feature_columns = cls.get_feature_columns(
-                    cls.dfs, feats, column_group='fundamental+technical')
+                    cls.dfs, feats, column_group='selected_columns')
             else:
                 feature_columns = cls.get_feature_columns(
-                    cls.dfs, feats, column_group='fundamental+technical')
+                    cls.dfs, feats, column_group='selected_columns')
+            test_X = stats.zscore(feats[feature_columns])
+            test_X = test_X.reshape((test_X.shape[0], 1, test_X.shape[1]))
             # 予測実施
-            df[label] = cls.models[label].predict(
-                stats.zscore(feats[feature_columns]))
+            df[label] = cls.models[label].predict(test_X)
             # 出力対象列に追加
             output_columns.append(label)
 
