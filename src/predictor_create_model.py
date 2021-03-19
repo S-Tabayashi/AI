@@ -80,9 +80,6 @@ class ScoringService(object):
                 'Result_FinancialStatement NetIncome',
                 'Result_FinancialStatement TotalAssets',
                 'Result_FinancialStatement NetAssets',
-                'Result_FinancialStatement CashFlowsFromOperatingActivities',
-                'Result_FinancialStatement CashFlowsFromFinancingActivities',
-                'Result_FinancialStatement CashFlowsFromInvestingActivities',
                 'Forecast_FinancialStatement NetSales',
                 'Forecast_FinancialStatement OperatingIncome',
                 'Forecast_FinancialStatement OrdinaryIncome',
@@ -91,16 +88,12 @@ class ScoringService(object):
                 'Result_Dividend AnnualDividendPerShare',
                 'Forecast_Dividend QuarterlyDividendPerShare',
                 'Forecast_Dividend AnnualDividendPerShare',
-                'IssuedShareEquityQuote IssuedShare',
                 'Previous_FinancialStatement NetSales',
                 'Previous_FinancialStatement OperatingIncome',
                 'Previous_FinancialStatement OrdinaryIncome',
                 'Previous_FinancialStatement NetIncome',
                 'Previous_FinancialStatement TotalAssets',
                 'Previous_FinancialStatement NetAssets',
-                'Previous_FinancialStatement CashFlowsFromOperatingActivities',
-                'Previous_FinancialStatement CashFlowsFromFinancingActivities',
-                'Previous_FinancialStatement CashFlowsFromInvestingActivities',
                 'operating_profit_margin','ordinary_profit_margin',
                 'net_profit_margin', 'total_asset_turnover',
                 'net_sales_growth_rate','ordinary_income_growth_rate',
@@ -571,7 +564,15 @@ class ScoringService(object):
                      "Forecast_FinancialStatement FiscalYear",
                      "Result_Dividend FiscalYear",
                      "Forecast_Dividend FiscalYear", "Section/Products",
-                     "33 Sector(Code)", "17 Sector(Code)"])
+                     "33 Sector(Code)", "17 Sector(Code)",
+                     "Result_FinancialStatement CashFlowsFromOperatingActivities",
+                     "Result_FinancialStatement CashFlowsFromFinancingActivities",
+                     "Result_FinancialStatement CashFlowsFromInvestingActivities",
+                     "Previous_FinancialStatement CashFlowsFromOperatingActivities",
+                     "Previous_FinancialStatement CashFlowsFromFinancingActivities",
+                     "Previous_FinancialStatement CashFlowsFromInvestingActivities",
+                     "IssuedShareEquityQuote IssuedShare"
+                     ])
         train_X = stats.zscore(train_X)
         train_X = train_X.reshape((train_X.shape[0], 1, train_X.shape[1]))
         val_X = val_X.drop(
@@ -579,7 +580,15 @@ class ScoringService(object):
                      "Forecast_FinancialStatement FiscalYear",
                      "Result_Dividend FiscalYear",
                      "Forecast_Dividend FiscalYear", "Section/Products",
-                     "33 Sector(Code)", "17 Sector(Code)"])
+                     "33 Sector(Code)", "17 Sector(Code)",
+                     "Result_FinancialStatement CashFlowsFromOperatingActivities",
+                     "Result_FinancialStatement CashFlowsFromFinancingActivities",
+                     "Result_FinancialStatement CashFlowsFromInvestingActivities",
+                     "Previous_FinancialStatement CashFlowsFromOperatingActivities",
+                     "Previous_FinancialStatement CashFlowsFromFinancingActivities",
+                     "Previous_FinancialStatement CashFlowsFromInvestingActivities",
+                     "IssuedShareEquityQuote IssuedShare"
+                     ])
         val_X = stats.zscore(val_X)
         val_X = val_X.reshape((val_X.shape[0], 1, val_X.shape[1]))
         # モデル作成
