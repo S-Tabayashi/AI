@@ -1,0 +1,5 @@
+./src/*.ipynb
+./src/backup
+./src/catboostinfo
+./src/*.bk
+
