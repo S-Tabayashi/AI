@@ -16,9 +16,10 @@ from keras.layers import Dense, LSTM, Dropout, BatchNormalization
 import keras
 from scipy import stats
 import tensorflow as tf
-from keras.layers import LeakyReLU
 from keras.layers.advanced_activations import PReLU
-from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
+
+np.random.seed(0)
 
 class ScoringService(object):
     # 訓練期間終了日
@@ -615,10 +616,9 @@ class ScoringService(object):
         model.add(BatchNormalization())
         model.add(Dropout(.05))
 
-        model.add(Dense(1))
-
         # 出力層
-        model.add(Dense(num_output))
+        model.add(Dense(1))
+        model.add(Dense(1))
         # ネットワークのコンパイル
         model.compile(loss='mse', optimizer=keras.optimizers.Adam(0.001),
                       metrics=['mse'])

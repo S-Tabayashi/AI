@@ -16,19 +16,20 @@ from keras.layers import Dense, LSTM, Dropout, BatchNormalization
 import keras
 from scipy import stats
 import tensorflow as tf
-from keras.layers import LeakyReLU
 from keras.layers.advanced_activations import PReLU
-from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
+
+np.random.seed(0)
 
 class ScoringService(object):
     # 訓練期間終了日
-    TRAIN_END = "2018-12-31"
+    TRAIN_END = "2019-12-31"
     # 評価期間開始日
-    VAL_START = "2019-02-01"
+    VAL_START = "2020-02-01"
     # 評価期間終了日
-    VAL_END = "2019-12-01"
+    VAL_END = "2020-12-01"
     # テスト期間開始日
-    TEST_START = "2020-01-01"
+    TEST_START = "2021-01-01"
     # 目的変数
     TARGET_LABELS = ["label_high_20", "label_low_20"]
 
@@ -537,13 +538,13 @@ class ScoringService(object):
         """
         # 特徴量を取得
         train_X_path = os.path.join(os.path.dirname("__file__"),
-                                    "../model/proceed_datas/train_X")
+                                    "../../new_data_dir/train_X")
         train_y_path = os.path.join(os.path.dirname("__file__"),
-                                    "../model/proceed_datas/train_y")
+                                    "../../new_data_dir/train_y")
         val_X_path = os.path.join(os.path.dirname("__file__"),
-                                    "../model/proceed_datas/val_X")
+                                    "../../new_data_dir/val_X")
         val_y_path = os.path.join(os.path.dirname("__file__"),
-                                    "../model/proceed_datas/val_y")
+                                    "../../new_data_dir/val_y")
 
         # 保存してあるデータを読み込む
         data_X = os.path.join(train_X_path, f"train_X_{label}.pkl")
@@ -558,7 +559,7 @@ class ScoringService(object):
         data_y = os.path.join(val_y_path, f"val_y_{label}.pkl")
         with open(data_y, "rb") as f:
             val_y = pickle.load(f)
-
+        '''
         train_X = train_X.drop(
             columns=["code", "Result_FinancialStatement FiscalYear",
                      "Forecast_FinancialStatement FiscalYear",
@@ -573,8 +574,11 @@ class ScoringService(object):
                      "Previous_FinancialStatement CashFlowsFromInvestingActivities",
                      "IssuedShareEquityQuote IssuedShare"
                      ])
+        '''
+        train_X = train_X[cls.FEATURES]
         train_X = stats.zscore(train_X)
         train_X = train_X.reshape((train_X.shape[0], 1, train_X.shape[1]))
+        '''
         val_X = val_X.drop(
             columns=["code", "Result_FinancialStatement FiscalYear",
                      "Forecast_FinancialStatement FiscalYear",
@@ -589,13 +593,12 @@ class ScoringService(object):
                      "Previous_FinancialStatement CashFlowsFromInvestingActivities",
                      "IssuedShareEquityQuote IssuedShare"
                      ])
+        '''
+        val_X = val_X[cls.FEATURES]
         val_X = stats.zscore(val_X)
         val_X = val_X.reshape((val_X.shape[0], 1, val_X.shape[1]))
         # モデル作成
         # ネットワークの各層のサイズの定義
-        num_l1 = 63
-        num_l2 = 63
-        num_l3 = 63
         num_output = 1
 
         # 以下、ネットワークを構築
@@ -636,9 +639,9 @@ class ScoringService(object):
         model.add(Dropout(.05))
 
         model.add(Dense(1))
+        model.add(Dense(1))
 
         # 出力層
-        model.add(Dense(num_output))
         # ネットワークのコンパイル
         model.compile(loss='mse', optimizer=keras.optimizers.Adam(0.001),
                       metrics=['mse'])
@@ -755,7 +758,7 @@ class ScoringService(object):
                                     "../model")
 
         # 保存してあるデータを読み込む
-        data_X = os.path.join(feats_path, "feature.pkl")
+        data_X = os.path.join(feats_path, "new_feature.pkl")
         with open(data_X, "rb") as f:
             feats = pickle.load(f)
 
