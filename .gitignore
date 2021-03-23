@@ -3,3 +3,6 @@
 ./src/catboostinfo
 ./src/*.bk
 ./src/.*
+./src/.ipynb_checkpoints
+./src/__pychache__
+./src/__DS_Store
