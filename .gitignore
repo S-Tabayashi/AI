@@ -2,4 +2,4 @@
 ./src/backup
 ./src/catboostinfo
 ./src/*.bk
-
+./src/.*
