@@ -547,36 +547,10 @@ class ScoringService(object):
         )
         # 特徴量カラムを指定
         # モデル作成
-        train_X = train_X.drop(
-            columns=["code", "Result_FinancialStatement FiscalYear",
-                     "Forecast_FinancialStatement FiscalYear",
-                     "Result_Dividend FiscalYear",
-                     "Forecast_Dividend FiscalYear", "Section/Products",
-                     "33 Sector(Code)", "17 Sector(Code)",
-                     "Result_FinancialStatement CashFlowsFromOperatingActivities",
-                     "Result_FinancialStatement CashFlowsFromFinancingActivities",
-                     "Result_FinancialStatement CashFlowsFromInvestingActivities",
-                     "Previous_FinancialStatement CashFlowsFromOperatingActivities",
-                     "Previous_FinancialStatement CashFlowsFromFinancingActivities",
-                     "Previous_FinancialStatement CashFlowsFromInvestingActivities",
-                     "IssuedShareEquityQuote IssuedShare"
-                     ])
+        train_X = train_X[cls.FEATURES]
         train_X = stats.zscore(train_X)
         train_X = train_X.reshape((train_X.shape[0], 1, train_X.shape[1]))
-        val_X = val_X.drop(
-            columns=["code", "Result_FinancialStatement FiscalYear",
-                     "Forecast_FinancialStatement FiscalYear",
-                     "Result_Dividend FiscalYear",
-                     "Forecast_Dividend FiscalYear", "Section/Products",
-                     "33 Sector(Code)", "17 Sector(Code)",
-                     "Result_FinancialStatement CashFlowsFromOperatingActivities",
-                     "Result_FinancialStatement CashFlowsFromFinancingActivities",
-                     "Result_FinancialStatement CashFlowsFromInvestingActivities",
-                     "Previous_FinancialStatement CashFlowsFromOperatingActivities",
-                     "Previous_FinancialStatement CashFlowsFromFinancingActivities",
-                     "Previous_FinancialStatement CashFlowsFromInvestingActivities",
-                     "IssuedShareEquityQuote IssuedShare"
-                     ])
+        val_X = val_X[cls.FEATURES]
         val_X = stats.zscore(val_X)
         val_X = val_X.reshape((val_X.shape[0], 1, val_X.shape[1]))
 
@@ -617,7 +591,6 @@ class ScoringService(object):
         model.add(Dropout(.05))
 
         # 出力層
-        model.add(Dense(1))
         model.add(Dense(1))
         # ネットワークのコンパイル
         model.compile(loss='mse', optimizer=keras.optimizers.Adam(0.001),
